@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام جراحة العيون والمخيمات المجانية - مستشفى بن زيلع الحديث</title>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        :root { --primary: #0284c7; --success: #16a34a; --danger: #dc2626; --warning: #d97706; --bg: #f8fafc; }
+        * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+        body { background: var(--bg); margin: 0; padding: 15px 10px; direction: rtl; color: #0f172a; }
+        .card { background: #fff; padding: 18px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); max-width: 700px; margin: 0 auto 15px auto; border: 1px solid #e2e8f0; }
+        h2, h3 { text-align: center; margin: 0 0 12px 0; color: #1e293b; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 6px; margin-bottom: 12px; }
+        .stat-card { background: #f1f5f9; padding: 8px 4px; border-radius: 8px; text-align: center; border: 1px solid #cbd5e1; }
+        .stat-num { font-size: 16px; font-weight: bold; color: var(--primary); }
+        .stat-label { font-size: 10px; color: #475569; font-weight: 600; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; margin-bottom: 4px; font-size: 13px; font-weight: 600; color: #334155; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; outline: none; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 6px; }
+        .btn-main { background: var(--primary); color: #fff; }
+        .btn-save { background: var(--success); color: #fff; }
+        .btn-camp { background: #8b5cf6; color: #fff; }
+        .hidden { display: none !important; }
+        .patient-box { border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; margin-bottom: 8px; background: #fff; }
+        .badge { padding: 2px 6px; border-radius: 4px; font-size: 10px; color: #fff; }
+        .bg-جديد { background: #64748b; }
+        .bg-مقرر { background: var(--warning); }
+        .bg-تم { background: var(--success); }
+    </style>
+</head>
+<body>
+
+<div id="mainView" class="card">
+    <h2>نظام المستشفى والمخيمات المجانية</h2>
+    <div style="text-align:center; font-size:12px; color:var(--primary); margin-bottom:10px;">🟢 متصل بقاعدة بيانات Firebase المباشرة</div>
+    
+    <div class="stats-grid">
+        <div class="stat-card"><div class="stat-num" id="stTotal">0</div><div class="stat-label">إجمالي المرضى</div></div>
+        <div class="stat-card"><div class="stat-num" id="stPending" style="color:var(--warning)">0</div><div class="stat-label">مقرر لهم</div></div>
+        <div class="stat-card"><div class="stat-num" id="stDone" style="color:var(--success)">0</div><div class="stat-label">تم الإنجاز</div></div>
+    </div>
+
+    <button class="btn-main" onclick="showSection('addPatientSection')">➕ إضافة مريض جديد (عمليات)</button>
+    <button class="btn-camp" onclick="showSection('addCampSection')">⛺ تسجيل مريض في المخيم المجاني</button>
+    <button class="btn-main" style="background:#475569" onclick="showSection('listSection')">📋 عرض قائمة المرضى</button>
+</div>
+
+<!-- إضافة مريض جراحة -->
+<div id="addPatientSection" class="card hidden">
+    <h3>تسجيل مريض جراحة جديد</h3>
+    <form onsubmit="savePatient(event, 'جراحة')">
+        <div class="form-group"><label>الاسم الكامل:</label><input type="text" id="p_name" required></div>
+        <div class="form-group"><label>المنطقة:</label><input type="text" id="p_area" required></div>
+        <div class="form-group"><label>رقم الجوال:</label><input type="tel" id="p_mobile" required></div>
+        <div class="form-group"><label>نوع العملية:</label><input type="text" id="p_operation" placeholder="مثال: سحب المياه البيضاء"></div>
+        <button type="submit" class="btn-save">💾 حفظ البيانات في Firebase</button>
+        <button type="button" class="btn-main" style="background:#64748b" onclick="showSection('mainView')">رجوع</button>
+    </form>
+</div>
+
+<!-- إضافة مريض مخيم -->
+<div id="addCampSection" class="card hidden">
+    <h3>تسجيل مريض في المخيم المجاني</h3>
+    <form onsubmit="savePatient(event, 'مخيم مجاني')">
+        <div class="form-group"><label>اسم المخيم:</label><input type="text" id="c_campName" placeholder="مثال: مخيم العيون المجاني الأول" required></div>
+        <div class="form-group"><label>اسم المريض:</label><input type="text" id="c_name" required></div>
+        <div class="form-group"><label>رقم الجوال:</label><input type="tel" id="c_mobile" required></div>
+        <div class="form-group"><label>نتيجة الفحص:</label><textarea id="c_result" placeholder="قرار الطبيب بالمخيم..."></textarea></div>
+        <button type="submit" class="btn-camp">⛺ حفظ بيانات المخيم وطباعة الكرت</button>
+        <button type="button" class="btn-main" style="background:#64748b" onclick="showSection('mainView')">رجوع</button>
+    </form>
+</div>
+
+<!-- قائمة المرضى -->
+<div id="listSection" class="card hidden">
+    <h3>قائمة المرضى المسجلين</h3>
+    <div id="patientsContainer">جاري تحميل البيانات...</div>
+    <button type="button" class="btn-main" style="background:#64748b" onclick="showSection('mainView')">رجوع</button>
+</div>
+
+<script>
+    // تهيئة Firebase بالرابط الخاص بك
+    const firebaseConfig = {
+        databaseURL: "https://yigd8888-default-rtdb.firebaseio.com/"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function showSection(id) {
+        document.querySelectorAll('.card').forEach(el => el.classList.add('hidden'));
+        document.getElementById(id).classList.remove('hidden');
+        if(id === 'listSection') loadPatients();
+    }
+
+    // المنع الذكي للتكرار والحفظ
+    function savePatient(e, type) {
+        e.preventDefault();
+        const name = type === 'جراحة' ? document.getElementById('p_name').value : document.getElementById('c_name').value;
+        const mobile = type === 'جراحة' ? document.getElementById('p_mobile').value : document.getElementById('c_mobile').value;
+        
+        // فحص التكرار برقم الجوال
+        db.ref('patients').orderByChild('mobile').equalTo(mobile).once('value', snapshot => {
+            if(snapshot.exists()) {
+                alert('⚠️ تنبيه: هذا المريض مسجل مسبقاً بالنظام بنفس رقم الجوال!');
+            } else {
+                const newRef = db.ref('patients').push();
+                const data = {
+                    name: name,
+                    mobile: mobile,
+                    type: type,
+                    status: 'جديد',
+                    area: type === 'جراحة' ? document.getElementById('p_area').value : '',
+                    operation: type === 'جراحة' ? document.getElementById('p_operation').value : '',
+                    campName: type === 'مخيم مجاني' ? document.getElementById('c_campName').value : '',
+                    createdAt: new Date().toLocaleString('ar-YE')
+                };
+                newRef.set(data, () => {
+                    alert('✅ تم حفظ البيانات بنجاح في قاعدة البيانات!');
+                    e.target.reset();
+                    showSection('mainView');
+                    updateStats();
+                });
+            }
+        });
+    }
+
+    // جلب البيانات لحظياً
+    function loadPatients() {
+        const container = document.getElementById('patientsContainer');
+        db.ref('patients').on('value', snapshot => {
+            container.innerHTML = '';
+            snapshot.forEach(child => {
+                const p = child.val();
+                container.innerHTML += `
+                    <div class="patient-box">
+                        <div style="display:flex; justify-content:space-between; font-weight:bold;">
+                            <span>${p.name}</span>
+                            <span class="badge bg-${p.status}">${p.status}</span>
+                        </div>
+                        <div style="font-size:12px; color:#64748b; margin-top:4px;">
+                            📱 ${p.mobile} | 🏷️ ${p.type} ${p.campName ? `(${p.campName})` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+        });
+    }
+
+    // تحديث الإحصائيات
+    function updateStats() {
+        db.ref('patients').once('value', snapshot => {
+            let total = 0, pending = 0, done = 0;
+            snapshot.forEach(child => {
+                total++;
+                if(child.val().status === 'مقرر') pending++;
+                if(child.val().status === 'تم') done++;
+            });
+            document.getElementById('stTotal').innerText = total;
+            document.getElementById('stPending').innerText = pending;
+            document.getElementById('stDone').innerText = done;
+        });
+    }
+
+    updateStats();
+</script>
+
+</body>
+</html>
